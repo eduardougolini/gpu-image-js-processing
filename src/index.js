@@ -1,5 +1,6 @@
 const BLACK_AND_WHITE = "0";
 const MOSAIC = "1";
+const INVERTED = "2";
 
 function processImage() {
   let processingType = document.getElementById("processing-type").value;
@@ -38,6 +39,18 @@ function processImage() {
     graphical: true
   });
 
+  let invertedFilter = gpu.createKernel(function(image) {
+    const pixel = image[this.thread.y][this.thread.x];
+    const red = 1 - pixel[0];
+    const green = 1 - pixel[1];
+    const blue = 1 - pixel[2];
+
+    this.color(red, green, blue, pixel[3]);
+  }, {
+    output : getOutputArray(),
+    graphical: true
+  });
+
   let image = document.createElement('img');
   image.src = document.getElementById("image").value;
   document.querySelector('.output-block').innerHTML = "";
@@ -48,6 +61,9 @@ function processImage() {
     break;
   case MOSAIC:
     document.querySelector('.output-block').insertBefore(mosaic.getCanvas(), document.querySelector('.output-block').children[0]);
+    break;
+  case INVERTED:
+    document.querySelector('.output-block').insertBefore(invertedFilter.getCanvas(), document.querySelector('.output-block').children[0]);
     break;
   }
     
@@ -62,6 +78,9 @@ function processImage() {
         break;
       case MOSAIC:
         mosaic(image, image.width, image.height);
+        break;
+      case INVERTED:
+        invertedFilter(image);
         break;
     }
 
