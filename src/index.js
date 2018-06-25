@@ -1,4 +1,8 @@
+const BLACK_AND_WHITE = "0";
+const MOSAIC = "1";
+
 function processImage() {
+  let processingType = document.getElementById("processing-type").value;
   let processType = document.getElementById("process-type").value;
   let gpu = new GPU({
     mode:  processType
@@ -18,14 +22,49 @@ function processImage() {
     graphical: true
   });
 
+  let mosaic = gpu.createKernel(function(image, w, h) {
+    let yOriginalPosition = this.thread.y;
+    let xOriginalPosition = this.thread.x;
+    while (yOriginalPosition >= h) {
+      yOriginalPosition -= h;
+    }
+    while (xOriginalPosition >= w) {
+      xOriginalPosition -= w;
+    }
+    const pixel = image[yOriginalPosition][xOriginalPosition];
+    this.color(pixel[0], pixel[1], pixel[2], pixel[3]);
+  }, {
+    output : getOutputArray('mosaic'),
+    graphical: true
+  });
+
   let image = document.createElement('img');
   image.src = document.getElementById("image").value;
   document.querySelector('.output-block').innerHTML = "";
-  document.querySelector('.output-block').insertBefore(blackAndWhiteFilter.getCanvas(), document.querySelector('.output-block').children[0]);
+  
+  switch(processingType) {
+  case BLACK_AND_WHITE:
+    document.querySelector('.output-block').insertBefore(blackAndWhiteFilter.getCanvas(), document.querySelector('.output-block').children[0]);
+    break;
+  case MOSAIC:
+    document.querySelector('.output-block').insertBefore(mosaic.getCanvas(), document.querySelector('.output-block').children[0]);
+    break;
+  }
+    
   document.querySelector('.output-block').insertBefore(image, document.querySelector('.output-block').children[0]);
+  
   image.onload = function () {
     let t0 = performance.now();
-    blackAndWhiteFilter(image);
+    
+    switch(processingType) {
+      case BLACK_AND_WHITE:
+        blackAndWhiteFilter(image);
+        break;
+      case MOSAIC:
+        mosaic(image, image.width, image.height);
+        break;
+    }
+
     let t1 = performance.now();
 
     let h3 = document.createElement("h3");
@@ -34,11 +73,19 @@ function processImage() {
   };
 }
 
-function getOutputArray() {
+function getOutputArray(type) {
   let elt = document.getElementById('image');
 
   if (elt.options[elt.selectedIndex].text === 'lenna') {
+    if (type === 'mosaic') {
+      return [2560, 2560];
+    }
+
     return [512, 512];
+  }
+
+  if (type === 'mosaic') {
+    return [1380, 915];
   }
 
   return [276, 183];
